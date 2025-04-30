@@ -1,0 +1,142 @@
+import cv2  # library pemrosesan gambar
+import numpy as np  # pengolahan numerik
+import pickle  # model machine learning yang disimpan
+from sklearn.neighbors import KNeighborsClassifier  # training model knearest
+from tkinter import Tk, Label, Button, filedialog, Frame  # komponen GUI dari Tkinter
+from PIL import Image, ImageTk  # membuka dan mengubah bentukan gambar agar ditampilkan sesuai ukuran window
+
+class FruitRipenessDetector:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🍌 Deteksi Kematangan Buah (ML Model)")
+        self.root.geometry("420x550")
+        self.root.configure(bg="#000000")  # Dark background
+
+        self.main_frame = Frame(root, bg="#000000", padx=20, pady=20)
+        self.main_frame.pack()
+
+        # 🔴 Judul dengan dua warna: 🍎 merah dan teks putih
+        self.title_frame = Frame(self.main_frame, bg="#000000")
+        self.title_frame.pack(pady=(0, 10))
+
+        self.apple_label = Label(
+            self.title_frame,
+            text="🍎",
+            font=("Helvetica", 18, "bold"),
+            fg="#FF0000",  # merah
+            bg="#000000"
+        )
+        self.apple_label.pack(side="left")
+
+        self.title_label = Label(
+            self.title_frame,
+            text="Deteksi Kematangan Buah",
+            font=("Helvetica", 18, "bold"),
+            fg="#FFFFFF",  # putih
+            bg="#000000"
+        )
+        self.title_label.pack(side="left")
+
+        # Deskripsi
+        self.desc_label = Label(
+            self.main_frame,
+            text="Deteksi tingkat kematangan buah\nsecara otomatis berdasarkan warna.",
+            font=("Helvetica", 10),
+            fg="#FFFFFF",
+            bg="#000000",
+            justify="center"
+        )
+        self.desc_label.pack(pady=5)
+
+        # Tombol Pilih Gambar
+        self.open_button = Button(
+            self.main_frame,
+            text="📷 Pilih Gambar",
+            font=("Helvetica", 12, "bold"),
+            bg="#4CAF50",
+            fg="white",
+            activebackground="#45a049",
+            padx=20,
+            pady=6,
+            command=self.open_image
+        )
+        self.open_button.pack(pady=5)
+
+        # Tombol Reset
+        self.reset_button = Button(
+            self.main_frame,
+            text="🔄 Reset",
+            font=("Helvetica", 12, "bold"),
+            bg="#f44336",
+            fg="white",
+            activebackground="#d32f2f",
+            padx=20,
+            pady=6,
+            command=self.reset_view
+        )
+        self.reset_button.pack(pady=5)
+
+        # Label hasil deteksi
+        self.result_label = Label(
+            self.main_frame,
+            text="",
+            font=("Helvetica", 12),
+            fg="#FFFFFF",
+            bg="#000000"
+        )
+        self.result_label.pack(pady=10)
+
+        # Label untuk menampilkan gambar
+        self.image_label = Label(self.main_frame, bg="#000000")
+        self.image_label.pack(pady=10)
+
+        # Label mapping
+        self.label_mapping = {
+            0: "Mentah",
+            1: "Setengah Matang",
+            2: "Matang"
+        }
+
+        # Load model
+        try:
+            with open('fruit_ripeness_model.pkl', 'rb') as file:
+                self.model = pickle.load(file)
+        except FileNotFoundError:
+            self.result_label.config(
+                text="❌ Model tidak ditemukan. Pastikan file 'fruit_ripeness_model.pkl' ada.")
+
+    def open_image(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Image Files", "*.jpg;*.jpeg;*.png")]
+        )
+        if file_path:
+            self.predict_ripeness(file_path)
+
+    def predict_ripeness(self, file_path):
+        image = cv2.imread(file_path)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        average_color = np.mean(image_rgb, axis=(0, 1)).reshape(1, -1)
+
+        prediction = self.model.predict(average_color)
+        label = self.label_mapping.get(prediction[0], "Tidak Dikenali")
+
+        self.show_image(file_path)
+        self.result_label.config(text=f"Hasil Deteksi 🍇: {label}")
+
+    def show_image(self, file_path):
+        image = Image.open(file_path)
+        image.thumbnail((300, 300))
+        photo = ImageTk.PhotoImage(image)
+
+        self.image_label.config(image=photo)
+        self.image_label.image = photo
+
+    def reset_view(self):
+        self.image_label.config(image="")
+        self.image_label.image = None
+        self.result_label.config(text="")
+
+if __name__ == "__main__":
+    root = Tk()
+    app = FruitRipenessDetector(root)
+    root.mainloop()
